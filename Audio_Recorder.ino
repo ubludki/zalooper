@@ -17,18 +17,31 @@
 #include <SD.h>
 #include <SerialFlash.h>
 
+#define AUDIOSHIELD 1
+
+// 0 -record, 1 - play
+#define MMODE  1
+
 // GUItool: begin automatically generated code
-AudioInputAnalog         adc1;           //xy=105,63
-//AudioAnalyzePeak         peak1;          //xy=278,108
-AudioRecordQueue         queue1;         //xy=281,63
 AudioPlaySdRaw           playRaw1;       //xy=302,157
-//AudioOutputI2S           i2s1;           //xy=470,120
-AudioOutputAnalogStereo        dacs1;
+AudioRecordQueue         queue1;         //xy=281,63
+AudioRecordQueue         queue2;         //xy=281,63
+#ifdef AUDIOSHIELD
+  AudioInputI2S      adc1;
+  AudioOutputI2S     i2s1;           //xy=470,120
+  AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
+  AudioConnection          patchCord_LO(playRaw1, 0, i2s1, 0);
+  AudioConnection          patchCord_RO(playRaw1, 0, i2s1, 1);
+  AudioConnection          patchCord1(adc1, 1, queue2, 0);
+#else
+  //AudioInputAnalogStereo   adc1;          
+  AudioInputAnalog         adc1(A3);  
+  AudioOutputAnalogStereo  dacs1;    
+  AudioConnection          patchCord3(playRaw1, 0, dacs1, 0);    
+#endif  
 AudioConnection          patchCord1(adc1, 0, queue1, 0);
-//AudioConnection          patchCord2(adc1, 0, peak1, 0);
-AudioConnection          patchCord3(playRaw1, 0, dacs1, 0);
-//AudioConnection          patchCord4(playRaw1, 0, i2s1, 1);
-//AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
+
+
 // GUItool: end automatically generated code
 
 #define BUTT_RECORD 37
@@ -46,22 +59,25 @@ const int myInput = AUDIO_INPUT_LINEIN;
 //const int myInput = AUDIO_INPUT_MIC;
 
 
-// Use these with the Teensy Audio Shield
-//#define SDCARD_CS_PIN    10
-//#define SDCARD_MOSI_PIN  7
-//#define SDCARD_SCK_PIN   14
 
-// Use these with the Teensy 3.5 & 3.6 SD card
-#define SDCARD_CS_PIN    BUILTIN_SDCARD
-#define SDCARD_MOSI_PIN  11  // not actually used
-#define SDCARD_SCK_PIN   13  // not actually used
+// Use these with the Teensy Audio Shield
+#ifdef AUDIOSHIELD
+  #define SDCARD_CS_PIN    10
+  #define SDCARD_MOSI_PIN  7
+  #define SDCARD_SCK_PIN   14
+#else
+  // Use these with the Teensy 3.5 & 3.6 SD card
+  #define SDCARD_CS_PIN    BUILTIN_SDCARD
+  #define SDCARD_MOSI_PIN  11  // not actually used
+  #define SDCARD_SCK_PIN   13  // not actually used
+#endif
 
 // Use these for the SD+Wiz820 or other adaptors
 //#define SDCARD_CS_PIN    4
 //#define SDCARD_MOSI_PIN  11
 //#define SDCARD_SCK_PIN   13
 
-// #define MMODE  1 // 0 -record, 1 - play
+
 
 #define STOPPED 0
 #define RECORDING 1
@@ -83,10 +99,12 @@ void setup() {
   // uses this memory to buffer incoming audio.
   AudioMemory(60);
 
-  // Enable the audio shield, select input, and enable output
-  //sgtl5000_1.enable();
-  //sgtl5000_1.inputSelect(myInput);
-  //sgtl5000_1.volume(0.5);
+  #ifdef AUDIOSHIELD
+    // Enable the audio shield, select input, and enable output
+    sgtl5000_1.enable();
+    sgtl5000_1.inputSelect(myInput);
+    sgtl5000_1.volume(0.5);
+  #endif
 
   // Initialize the SD card
   SPI.setMOSI(SDCARD_MOSI_PIN);
@@ -108,27 +126,27 @@ void loop() {
   buttonPlay.update();
 
 // ---- AF POC with one pot...   
-//   if(MMODE==0) {
-//       startRecording();
-//       Serial.println("Started recording");
-//       for(int j = 0 ; j<5000;j++) {
-//          continueRecording();
-//          delay(1);      
-//       }
-//       stopRecording();
-//       Serial.println("Ended recording");
-//       delay(100000000);
-//   } else if (MMODE==1) {
-//      Serial.println("Started playing");
-//      startPlaying();      
-//      for(int j = 0 ; j<5000;j++) {
-//          continuePlaying();
-//          delay(10);      
-//       }
-//       stopPlaying();
-//       Serial.println("Ended playing");
-//       delay(100000000);
-//   }
+   if(MMODE==0) {
+       startRecording();
+       Serial.println("Started recording");
+       for(int j = 0 ; j<15000;j++) {
+          continueRecording();
+          delay(1);      
+       }
+       stopRecording();
+       Serial.println("Ended recording");
+       delay(100000000);
+   } else if (MMODE==1) {
+      Serial.println("Started playing");
+      startPlaying();      
+      for(int j = 0 ; j<5000;j++) {
+          continuePlaying();
+          delay(10);      
+       }
+       stopPlaying();
+       Serial.println("Ended playing");
+       delay(100000000);
+   }
 //  -------
    
 // Respond to button presses
