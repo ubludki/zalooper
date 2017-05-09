@@ -2,23 +2,23 @@
 //
 // Requires the audio shield:
 //   http://www.pjrc.com/store/teensy3_audio.html
-//
+//  OR (!!!) Teensy 3.5 
+
 // Three pushbuttons need to be connected:
-//   Record Button: pin 0 to GND
-//   Stop Button:   pin 1 to GND
-//   Play Button:   pin 2 to GND
+//   Record Button: pin X to GND
+//   Stop Button:   pin Y to GND
+//   Play Button:   pin Z to GND
 
 #define AUDIOSHIELD 1
 
 #ifdef AUDIOSHIELD
-#define BUTT_RECORD 20
-#define BUTT_STOP 22
-#define BUTT_PLAY 21
+  #define BUTT_RECORD 0
+  #define BUTT_STOP 1
+  #define BUTT_PLAY 2
 #else
-#define BUTT_RECORD 37
-#define BUTT_STOP 38
-#define BUTT_PLAY 39
-
+  #define BUTT_RECORD 37
+  #define BUTT_STOP 38
+  #define BUTT_PLAY 39
 #endif
 
 // This example code is in the public domain.
@@ -31,8 +31,8 @@
 #include <SerialFlash.h>
 
 
-// 0 -record, 1 - play, 2 - go tp buttons
-#define MMODE  1
+// 0 -record, 1 - play, 2 - listen to buttons
+#define MMODE  2
 
 // GUItool: begin automatically generated code
 AudioPlaySdRaw           playRaw1;       //xy=302,157
@@ -42,8 +42,21 @@ AudioRecordQueue         queue2;         //xy=281,63
   AudioInputI2S      adc1;
   AudioOutputI2S     i2s1;           //xy=470,120
   AudioControlSGTL5000     sgtl5000_1;     //xy=265,212
-  AudioConnection          patchCord_LO(playRaw1, 0, i2s1, 0);
-  AudioConnection          patchCord_RO(playRaw1, 0, i2s1, 1);
+
+  // AudioConnection          patchCord_PlayL(playRaw1, 0, i2s1, 0);
+  // AudioConnection          patchCord_PlayR(playRaw1, 0, i2s1, 1);
+  
+  // AudioConnection          patchCord_passL(adc1, 0, i2s1, 1); // simple passthrough..
+  // AudioConnection          patchCord_passR(adc1, 0, i2s1, 0);
+
+  AudioMixer4              mixerL;
+  AudioMixer4              mixerR;
+  AudioConnection          patchCord_passMixL(adc1, 0, mixerL, 0); // passthrough to mixer..
+  AudioConnection          patchCord_passMixR(adc1, 1, mixerR, 0);
+  AudioConnection          patchCord_PlayL(playRaw1, 0, mixerL, 1); // mix in the recording..
+  AudioConnection          patchCord_PlayR(playRaw1, 0, mixerR, 1);  
+  AudioConnection          patchCord_passL(mixerL, 0, i2s1, 1); 
+  AudioConnection          patchCord_passR(mixerR, 0, i2s1, 0);
  
 #else
   //AudioInputAnalogStereo   adc1;          
@@ -51,7 +64,8 @@ AudioRecordQueue         queue2;         //xy=281,63
   AudioOutputAnalogStereo  dacs1;    
   AudioConnection          patchCord3(playRaw1, 0, dacs1, 0);    
 #endif  
-AudioConnection          patchCord1(adc1, 0, queue1, 0);
+AudioConnection          patchCord_RecL(adc1, 0, queue1, 0);
+AudioConnection          patchCord_RecR(adc1, 1, queue2, 0);
 
 
 // GUItool: end automatically generated code
@@ -227,8 +241,10 @@ void continueRecording() {
     // approximately 301700 us of audio, to allow time
     // for occasional high SD card latency, as long as
     // the average write time is under 5802 us.
-    //Serial.print("SD write, us=");
-    //Serial.println(usec);
+    if(usec>5000) {
+      Serial.print("SD write, us=");
+      Serial.println(usec);
+    }    
   }
 }
 
